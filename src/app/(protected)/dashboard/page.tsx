@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useSession } from "next-auth/react";
 import { formatDistanceToNow } from "date-fns";
 
 interface DashboardData {
@@ -37,14 +36,10 @@ function StatCard({ label, value, sub, color }: { label: string; value: string |
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
   const [data, setData] = useState<DashboardData | null>(null);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  // session is used to ensure auth context is available
-  void session;
 
   async function fetchDashboard() {
     try {

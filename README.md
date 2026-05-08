@@ -3,7 +3,7 @@
 A modern, secure full-stack web app to help cybersecurity Discord communities maintain daily consistency through task tracking, streaks, and leaderboards.
 
 ## Tech Stack
-- **Next.js 15** (App Router) + TypeScript
+- **Next.js 16** (App Router) + TypeScript
 - **Tailwind CSS** (dark cyber theme)
 - **MongoDB** + Mongoose
 - **NextAuth v5** (Credentials provider)

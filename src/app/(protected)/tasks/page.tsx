@@ -14,7 +14,7 @@ interface Task {
 
 function isTaskWindowOpen(): boolean {
   const hour = new Date().getHours();
-  return hour >= 22;
+  return hour >= 22 || hour === 0;
 }
 
 export default function TasksPage() {
