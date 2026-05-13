@@ -4,6 +4,9 @@ export interface IUser extends Document {
   username: string;
   email: string;
   password: string;
+  role: "user" | "admin";
+  isPublic: boolean;
+  isDisabled: boolean;
   currentStreak: number;
   bestStreak: number;
   totalTasksCompleted: number;
@@ -18,6 +21,9 @@ const UserSchema = new Schema<IUser>(
     username: { type: String, required: true, trim: true, minlength: 2, maxlength: 50 },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
     password: { type: String, required: true },
+    role: { type: String, enum: ["user", "admin"], default: "user" },
+    isPublic: { type: Boolean, default: true },
+    isDisabled: { type: Boolean, default: false },
     currentStreak: { type: Number, default: 0 },
     bestStreak: { type: Number, default: 0 },
     totalTasksCompleted: { type: Number, default: 0 },

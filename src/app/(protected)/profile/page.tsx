@@ -5,10 +5,11 @@ import { useSession } from "next-auth/react";
 import { format } from "date-fns";
 
 interface ProfileData {
-  user: {
-    username: string;
-    email: string;
-    currentStreak: number;
+    user: {
+      username: string;
+      email: string;
+      isPublic: boolean;
+      currentStreak: number;
     bestStreak: number;
     totalTasksCompleted: number;
     totalActiveDays: number;
@@ -31,6 +32,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [username, setUsername] = useState("");
   const [editing, setEditing] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,7 @@ export default function ProfilePage() {
       .then((d) => {
         setProfile(d);
         setUsername(d.user?.username ?? "");
+        setIsPublic(d.user?.isPublic ?? true);
       })
       .catch(() => null)
       .finally(() => setLoading(false));
@@ -54,7 +57,7 @@ export default function ProfilePage() {
       const res = await fetch("/api/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim() }),
+        body: JSON.stringify({ username: username.trim(), isPublic }),
       });
       const data = await res.json();
       if (res.ok) {
@@ -70,6 +73,30 @@ export default function ProfilePage() {
     } finally {
       setSaving(false);
       setTimeout(() => setMessage(""), 3000);
+    }
+  }
+
+  async function handlePrivacyToggle(nextValue: boolean) {
+    setIsPublic(nextValue);
+    setMessage("");
+    try {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isPublic: nextValue }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setIsPublic(!nextValue);
+        setMessage(data.error ?? "Failed to update privacy.");
+        return;
+      }
+      if (profile) setProfile({ user: { ...profile.user, isPublic: nextValue } });
+      setMessage(`Profile is now ${nextValue ? "Public" : "Private"}.`);
+      setTimeout(() => setMessage(""), 3000);
+    } catch {
+      setIsPublic(!nextValue);
+      setMessage("An error occurred.");
     }
   }
 
@@ -162,6 +189,24 @@ export default function ProfilePage() {
             </button>
           )}
         </div>
+      </div>
+
+      <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+        <h3 className="font-semibold text-white mb-2">Activity Feed Privacy</h3>
+        <p className="text-sm text-gray-400 mb-4">
+          Public profiles appear in the global activity feed. Private profiles are hidden retroactively.
+        </p>
+        <button
+          type="button"
+          onClick={() => handlePrivacyToggle(!isPublic)}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            isPublic
+              ? "bg-green-500/20 text-green-300 border border-green-500/30"
+              : "bg-gray-800 text-gray-300 border border-gray-700"
+          }`}
+        >
+          {isPublic ? "Public" : "Private"}
+        </button>
       </div>
     </div>
   );

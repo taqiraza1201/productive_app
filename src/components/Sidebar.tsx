@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 import { useState } from "react";
 
 const navItems = [
@@ -43,6 +43,15 @@ const navItems = [
     ),
   },
   {
+    href: "/activity",
+    label: "Activity",
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m4 4h1V8h1m-4-4h.01M12 5a7 7 0 100 14 7 7 0 000-14z" />
+      </svg>
+    ),
+  },
+  {
     href: "/profile",
     label: "Profile",
     icon: (
@@ -52,12 +61,64 @@ const navItems = [
     ),
   },
 ];
+type NavItem = (typeof navItems)[number];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const [open, setOpen] = useState(false);
+  const visibleNavItems: NavItem[] = session?.user?.role === "admin"
+    ? [...navItems, {
+        href: "/admin",
+        label: "Admin",
+        icon: (
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-2.21 0-4 1.79-4 4v5h8v-5c0-2.21-1.79-4-4-4zm0 0V6m0 11v1m-6 0h12" />
+          </svg>
+        ),
+      }]
+    : navItems;
 
-  const SidebarContent = () => (
+  return (
+    <>
+      {/* Mobile hamburger */}
+      <button
+        onClick={() => setOpen(!open)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-300"
+      >
+        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
+        </svg>
+      </button>
+
+      {/* Mobile overlay */}
+      {open && (
+        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)} />
+      )}
+
+      {/* Mobile drawer */}
+      <div className={`lg:hidden fixed left-0 top-0 h-full w-64 z-40 bg-gray-900 border-r border-gray-800 transform transition-transform ${open ? "translate-x-0" : "-translate-x-full"}`}>
+        <SidebarContent pathname={pathname} navItems={visibleNavItems} onNavigate={() => setOpen(false)} />
+      </div>
+
+      {/* Desktop sidebar */}
+      <div className="hidden lg:flex flex-col w-64 bg-gray-900 border-r border-gray-800 fixed left-0 top-0 h-full z-30">
+        <SidebarContent pathname={pathname} navItems={visibleNavItems} onNavigate={() => setOpen(false)} />
+      </div>
+    </>
+  );
+}
+
+function SidebarContent({
+  pathname,
+  navItems,
+  onNavigate,
+}: {
+  pathname: string;
+  navItems: NavItem[];
+  onNavigate: () => void;
+}) {
+  return (
     <div className="flex flex-col h-full">
       <div className="p-6 border-b border-gray-800">
         <div className="flex items-center gap-3">
@@ -77,7 +138,7 @@ export default function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
-              onClick={() => setOpen(false)}
+              onClick={onNavigate}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 isActive
                   ? "bg-cyan-500/15 text-cyan-400 border border-cyan-500/20"
@@ -103,34 +164,5 @@ export default function Sidebar() {
         </button>
       </div>
     </div>
-  );
-
-  return (
-    <>
-      {/* Mobile hamburger */}
-      <button
-        onClick={() => setOpen(!open)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-gray-900 border border-gray-700 text-gray-300"
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={open ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"} />
-        </svg>
-      </button>
-
-      {/* Mobile overlay */}
-      {open && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-black/60" onClick={() => setOpen(false)} />
-      )}
-
-      {/* Mobile drawer */}
-      <div className={`lg:hidden fixed left-0 top-0 h-full w-64 z-40 bg-gray-900 border-r border-gray-800 transform transition-transform ${open ? "translate-x-0" : "-translate-x-full"}`}>
-        <SidebarContent />
-      </div>
-
-      {/* Desktop sidebar */}
-      <div className="hidden lg:flex flex-col w-64 bg-gray-900 border-r border-gray-800 fixed left-0 top-0 h-full z-30">
-        <SidebarContent />
-      </div>
-    </>
   );
 }

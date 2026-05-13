@@ -6,7 +6,7 @@ import { Task } from "@/models/Task";
 export async function GET() {
   await connectDB();
 
-  const users = await User.find({})
+  const users = await User.find({ isDisabled: { $ne: true } })
     .select("username currentStreak bestStreak totalTasksCompleted totalActiveDays")
     .sort({ currentStreak: -1, totalTasksCompleted: -1 })
     .limit(50)

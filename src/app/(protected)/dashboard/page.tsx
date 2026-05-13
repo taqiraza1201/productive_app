@@ -14,14 +14,18 @@ interface DashboardData {
   };
   ranking: { rank: number; total: number };
   completionPercentage: number;
-  todayTasks: Array<{ _id: string; title: string; completed: boolean }>;
+  completedTasks: number;
+  stuckTasks: number;
+  todayTasks: Array<{ _id: string; title: string; completed: boolean; status?: "PENDING" | "DONE" | "STUCK" }>;
 }
 
 interface Activity {
   id: string;
   username: string;
   action: string;
+  type: "DONE" | "STUCK";
   taskTitle: string;
+  note: string;
   createdAt: string;
 }
 
@@ -62,10 +66,14 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    fetchDashboard();
+    const kickoff = setTimeout(() => {
+      void fetchDashboard();
+    }, 0);
     const interval = setInterval(fetchDashboard, 30000);
-    return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(kickoff);
+      clearInterval(interval);
+    };
   }, []);
 
   if (loading) {
@@ -86,7 +94,7 @@ export default function DashboardPage() {
 
   if (!data) return null;
 
-  const { user, ranking, completionPercentage, todayTasks } = data;
+  const { user, ranking, completionPercentage, todayTasks, completedTasks, stuckTasks } = data;
 
   return (
     <div className="space-y-6">
@@ -99,11 +107,12 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
         <StatCard label="Current Streak" value={`🔥 ${user.currentStreak}`} sub="days" color="border-orange-500/30" />
         <StatCard label="Best Streak" value={`⚡ ${user.bestStreak}`} sub="days" color="border-yellow-500/30" />
         <StatCard label="Active Days" value={user.totalActiveDays} sub="total" color="border-cyan-500/30" />
-        <StatCard label="Tasks Done" value={user.totalTasksCompleted} sub="completed" color="border-green-500/30" />
+        <StatCard label="Tasks Done" value={completedTasks} sub="completed" color="border-green-500/30" />
+        <StatCard label="Tasks Stuck" value={stuckTasks} sub="needs attention" color="border-red-500/30" />
         <StatCard label="Completion" value={`${completionPercentage}%`} sub="rate" color="border-purple-500/30" />
         <StatCard label="Rank" value={`#${ranking.rank}`} sub={`of ${ranking.total}`} color="border-pink-500/30" />
       </div>
@@ -118,12 +127,12 @@ export default function DashboardPage() {
             <ul className="space-y-2">
               {todayTasks.map((task) => (
                 <li key={task._id} className="flex items-center gap-3 p-3 bg-gray-800 rounded-lg">
-                  <span className={`w-2 h-2 rounded-full ${task.completed ? "bg-green-400" : "bg-gray-600"}`} />
-                  <span className={`text-sm flex-1 ${task.completed ? "line-through text-gray-500" : "text-gray-200"}`}>
+                  <span className={`w-2 h-2 rounded-full ${(task.status ?? (task.completed ? "DONE" : "PENDING")) === "DONE" ? "bg-green-400" : (task.status ?? (task.completed ? "DONE" : "PENDING")) === "STUCK" ? "bg-red-400" : "bg-gray-600"}`} />
+                  <span className={`text-sm flex-1 ${(task.status ?? (task.completed ? "DONE" : "PENDING")) === "PENDING" ? "text-gray-200" : "text-gray-500"}`}>
                     {task.title}
                   </span>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${task.completed ? "bg-green-500/20 text-green-400" : "bg-gray-700 text-gray-400"}`}>
-                    {task.completed ? "Done" : "Pending"}
+                  <span className={`text-xs px-2 py-0.5 rounded-full ${(task.status ?? (task.completed ? "DONE" : "PENDING")) === "DONE" ? "bg-green-500/20 text-green-400" : (task.status ?? (task.completed ? "DONE" : "PENDING")) === "STUCK" ? "bg-red-500/20 text-red-300" : "bg-gray-700 text-gray-400"}`}>
+                    {task.status ?? (task.completed ? "DONE" : "PENDING")}
                   </span>
                 </li>
               ))}
@@ -146,8 +155,9 @@ export default function DashboardPage() {
                   <div className="min-w-0">
                     <p className="text-sm text-gray-300">
                       <span className="font-medium text-white">{item.username}</span>{" "}
-                      {item.action}
+                      {item.action} — <span className="text-cyan-300">{item.taskTitle}</span>
                     </p>
+                    <p className="text-xs text-gray-400 mt-0.5">{item.note}</p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
                     </p>

@@ -20,6 +20,8 @@ export async function GET(req: NextRequest) {
   const date = searchParams.get("date") ?? getTodayDateStr();
 
   await connectDB();
+  const currentUser = await User.findById(session.user.id).select("isDisabled").lean<{ isDisabled: boolean } | null>();
+  if (currentUser?.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
   const tasks = await Task.find({ userId: session.user.id, taskDate: date }).sort({ createdAt: -1 }).lean();
   return NextResponse.json({ tasks });
 }
@@ -42,12 +44,17 @@ export async function POST(req: NextRequest) {
   const todayStr = getTodayDateStr();
 
   await connectDB();
+  const currentUser = await User.findById(session.user.id).select("isDisabled").lean<{ isDisabled: boolean } | null>();
+  if (currentUser?.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
 
   const task = await Task.create({
     title,
     description,
     userId: session.user.id,
     taskDate: todayStr,
+    status: "PENDING",
+    doneNote: "",
+    stuckNote: "",
   });
 
   // Update streak
