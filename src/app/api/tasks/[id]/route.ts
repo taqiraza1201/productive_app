@@ -76,8 +76,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   return NextResponse.json({ task });
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  void req;
-  void params;
+export async function DELETE() {
   return NextResponse.json({ error: "Task deletion is disabled." }, { status: 405 });
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
 
 interface DashboardData {
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  async function fetchDashboard() {
+  const fetchDashboard = useCallback(async () => {
     try {
       const [dashRes, actRes] = await Promise.all([
         fetch("/api/dashboard"),
@@ -63,18 +63,16 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
   useEffect(() => {
-    const kickoff = setTimeout(() => {
-      void fetchDashboard();
-    }, 0);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async fetch for dashboard data
+    void fetchDashboard();
     const interval = setInterval(fetchDashboard, 30000);
     return () => {
-      clearTimeout(kickoff);
       clearInterval(interval);
     };
-  }, []);
+  }, [fetchDashboard]);
 
   if (loading) {
     return (

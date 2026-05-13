@@ -8,7 +8,7 @@ interface GlobalMongoose {
 }
 
 declare global {
-  var _mongoose: GlobalMongoose | undefined;
+  let _mongoose: GlobalMongoose | undefined;
 }
 
 const cached = global._mongoose ?? { conn: null, promise: null };

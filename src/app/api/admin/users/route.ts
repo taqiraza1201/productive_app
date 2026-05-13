@@ -4,6 +4,7 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { Task } from "@/models/Task";
 import { logAdminAction, requireAdmin } from "@/lib/admin";
+import { Types } from "mongoose";
 
 const updateUserSchema = z.object({
   userId: z.string().min(1),
@@ -47,7 +48,7 @@ export async function GET(req: NextRequest) {
     }>>();
 
   const userIds = users.map((u) => u._id);
-  const taskStats = await Task.aggregate<{ _id: unknown; totalTasks: number; doneTasks: number; stuckTasks: number }>([
+  const taskStats = await Task.aggregate<{ _id: Types.ObjectId; totalTasks: number; doneTasks: number; stuckTasks: number }>([
     { $match: { userId: { $in: userIds } } },
     {
       $group: {

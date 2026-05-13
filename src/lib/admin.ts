@@ -3,12 +3,7 @@ import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { AdminAuditLog } from "@/models/AdminAuditLog";
 
-let bootstrapAttempted = false;
-
 export async function bootstrapAdminFromEnv() {
-  if (bootstrapAttempted) return;
-  bootstrapAttempted = true;
-
   const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
   const adminPassword = process.env.ADMIN_PASSWORD;
   const adminUsername = process.env.ADMIN_USERNAME?.trim() || "Admin";

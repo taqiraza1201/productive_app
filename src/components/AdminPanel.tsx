@@ -86,10 +86,8 @@ export default function AdminPanel() {
   }
 
   useEffect(() => {
-    const kickoff = setTimeout(() => {
-      void refreshAll();
-    }, 0);
-    return () => clearTimeout(kickoff);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async admin data load
+    void refreshAll();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

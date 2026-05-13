@@ -46,10 +46,8 @@ export default function TasksPage() {
   }, [selectedDate]);
 
   useEffect(() => {
-    const kickoff = setTimeout(() => {
-      void fetchTasks();
-    }, 0);
-    return () => clearTimeout(kickoff);
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async fetch for selected date tasks
+    void fetchTasks();
   }, [fetchTasks]);
 
   useEffect(() => {
