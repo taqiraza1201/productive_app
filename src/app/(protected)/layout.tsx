@@ -1,10 +1,17 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Sidebar from "@/components/Sidebar";
+import { connectDB } from "@/lib/mongodb";
+import { User } from "@/models/User";
 
 export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
   if (!session?.user) {
+    redirect("/login");
+  }
+  await connectDB();
+  const user = await User.findById(session.user.id).select("isDisabled").lean<{ isDisabled: boolean } | null>();
+  if (user?.isDisabled) {
     redirect("/login");
   }
 

@@ -15,6 +15,7 @@ export async function GET() {
     _id: { toString(): string };
     username: string;
     email: string;
+    isDisabled: boolean;
     currentStreak: number;
     bestStreak: number;
     totalTasksCompleted: number;
@@ -24,9 +25,11 @@ export async function GET() {
   }>();
 
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  if (user.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
 
-  const totalUsers = await User.countDocuments();
+  const totalUsers = await User.countDocuments({ isDisabled: { $ne: true } });
   const rank = await User.countDocuments({
+    isDisabled: { $ne: true },
     $or: [
       { currentStreak: { $gt: user.currentStreak } },
       {
@@ -39,7 +42,11 @@ export async function GET() {
   const todayStr = getTodayDateStr();
   const todayTasks = await Task.find({ userId: session.user.id, taskDate: todayStr }).lean();
   const totalTasks = await Task.countDocuments({ userId: session.user.id });
-  const completedTasks = await Task.countDocuments({ userId: session.user.id, completed: true });
+  const completedTasks = await Task.countDocuments({
+    userId: session.user.id,
+    $or: [{ status: "DONE" }, { status: { $exists: false }, completed: true }],
+  });
+  const stuckTasks = await Task.countDocuments({ userId: session.user.id, status: "STUCK" });
   const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
   // Last 7 days activity
@@ -65,6 +72,8 @@ export async function GET() {
     ranking: { rank: rank + 1, total: totalUsers },
     todayTasks,
     completionPercentage: completionPct,
+    completedTasks,
+    stuckTasks,
     recentTasks,
   });
 }

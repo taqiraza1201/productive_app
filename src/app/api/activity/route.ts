@@ -1,37 +1,44 @@
 import { NextResponse } from "next/server";
 import { connectDB } from "@/lib/mongodb";
-import { Task } from "@/models/Task";
+import { Activity } from "@/models/Activity";
 import { User } from "@/models/User";
 
 export async function GET() {
   await connectDB();
 
-  const recentTasks = await Task.find({})
+  const recentActivity = await Activity.find({ isHidden: false })
     .sort({ createdAt: -1 })
-    .limit(20)
+    .limit(50)
     .lean<Array<{
       _id: { toString(): string };
-      title: string;
-      completed: boolean;
       userId: { toString(): string };
+      taskId: { toString(): string };
+      type: "DONE" | "STUCK";
+      taskTitle: string;
+      note: string;
       createdAt: Date;
     }>>();
 
-  const userIds = [...new Set(recentTasks.map((t) => t.userId.toString()))];
-  const users = await User.find({ _id: { $in: userIds } }).select("username").lean<Array<{
+  const userIds = [...new Set(recentActivity.map((a) => a.userId.toString()))];
+  const users = await User.find({ _id: { $in: userIds }, isPublic: { $ne: false }, isDisabled: { $ne: true } }).select("username").lean<Array<{
     _id: { toString(): string };
     username: string;
   }>>();
 
   const userMap = Object.fromEntries(users.map((u) => [u._id.toString(), u.username]));
 
-  const activity = recentTasks.map((task) => ({
-    id: task._id.toString(),
-    username: userMap[task.userId.toString()] ?? "Unknown",
-    action: task.completed ? "completed a task" : "created a task",
-    taskTitle: task.title,
-    createdAt: task.createdAt,
-  }));
+  const activity = recentActivity
+    .filter((item) => Boolean(userMap[item.userId.toString()]))
+    .map((item) => ({
+      id: item._id.toString(),
+      taskId: item.taskId.toString(),
+      username: userMap[item.userId.toString()],
+      type: item.type,
+      action: item.type === "DONE" ? "completed a task" : "got stuck on a task",
+      taskTitle: item.taskTitle,
+      note: item.note,
+      createdAt: item.createdAt,
+    }));
 
   return NextResponse.json({ activity });
 }

@@ -8,6 +8,9 @@ interface Task {
   title: string;
   description: string;
   completed: boolean;
+  status?: "PENDING" | "DONE" | "STUCK";
+  doneNote?: string;
+  stuckNote?: string;
   taskDate: string;
   createdAt: string;
 }
@@ -43,8 +46,8 @@ export default function TasksPage() {
   }, [selectedDate]);
 
   useEffect(() => {
-    setLoading(true);
-    fetchTasks();
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Initial async fetch for selected date tasks
+    void fetchTasks();
   }, [fetchTasks]);
 
   useEffect(() => {
@@ -57,6 +60,7 @@ export default function TasksPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
+    if (!window.confirm("Are you sure? You cannot delete this task after creating it.")) return;
     setError("");
     setSuccess("");
     setCreating(true);
@@ -84,31 +88,35 @@ export default function TasksPage() {
     }
   }
 
-  async function toggleTask(id: string, completed: boolean) {
+  async function finalizeTask(id: string, status: "DONE" | "STUCK") {
+    const notePrompt = status === "DONE"
+      ? "What did you learn from this task?"
+      : "Why are you stuck on this task?";
+    const note = window.prompt(notePrompt, "");
+    if (!note || note.trim().length < 5) {
+      setError(status === "DONE" ? "DONE requires a learning note (min 5 chars)." : "STUCK requires a reason (min 5 chars).");
+      return;
+    }
+
     try {
       const res = await fetch(`/api/tasks/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ completed: !completed }),
+        body: JSON.stringify({ status, note: note.trim() }),
       });
+      const data = await res.json();
       if (res.ok) {
-        setTasks((prev) => prev.map((t) => t._id === id ? { ...t, completed: !completed } : t));
+        setTasks((prev) => prev.map((t) => t._id === id ? data.task : t));
+      } else {
+        setError(data.error ?? "Failed to update task.");
       }
     } catch {
-      // ignore
+      setError("An error occurred.");
     }
   }
 
-  async function deleteTask(id: string) {
-    try {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-      if (res.ok) setTasks((prev) => prev.filter((t) => t._id !== id));
-    } catch {
-      // ignore
-    }
-  }
-
-  const completedCount = tasks.filter((t) => t.completed).length;
+  const completedCount = tasks.filter((t) => (t.status ?? (t.completed ? "DONE" : "PENDING")) === "DONE").length;
+  const stuckCount = tasks.filter((t) => (t.status ?? (t.completed ? "DONE" : "PENDING")) === "STUCK").length;
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto">
@@ -185,7 +193,7 @@ export default function TasksPage() {
             {selectedDate === format(new Date(), "yyyy-MM-dd") ? "Today's Tasks" : `Tasks for ${selectedDate}`}
           </h2>
           {tasks.length > 0 && (
-            <span className="text-xs text-gray-400">{completedCount}/{tasks.length} done</span>
+            <span className="text-xs text-gray-400">{completedCount} done • {stuckCount} stuck • {tasks.length} total</span>
           )}
         </div>
 
@@ -199,34 +207,45 @@ export default function TasksPage() {
           <ul className="space-y-3">
             {tasks.map((task) => (
               <li key={task._id} className="flex items-start gap-3 p-3 bg-gray-800 rounded-lg group">
-                <button
-                  onClick={() => toggleTask(task._id, task.completed)}
-                  className={`mt-0.5 w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center transition-colors ${
-                    task.completed ? "bg-green-500 border-green-500" : "border-gray-600 hover:border-cyan-500"
-                  }`}
-                >
-                  {task.completed && (
-                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium ${task.completed ? "line-through text-gray-500" : "text-white"}`}>
+                  {(() => {
+                    const status = task.status ?? (task.completed ? "DONE" : "PENDING");
+                    const statusClass = status === "DONE" ? "text-green-400 bg-green-500/20 border border-green-500/30" : status === "STUCK" ? "text-red-300 bg-red-500/20 border border-red-500/30" : "text-gray-300 bg-gray-700 border border-gray-600";
+                    return (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full mb-1 inline-block ${statusClass}`}>
+                        {status}
+                      </span>
+                    );
+                  })()}
+                  <p className={`text-sm font-medium ${(task.status ?? (task.completed ? "DONE" : "PENDING")) !== "PENDING" ? "text-gray-300" : "text-white"}`}>
                     {task.title}
                   </p>
                   {task.description && (
                     <p className="text-xs text-gray-500 mt-0.5">{task.description}</p>
                   )}
+                  {(task.doneNote || task.stuckNote) && (
+                    <p className="text-xs text-cyan-300 mt-1">
+                      {(task.status ?? (task.completed ? "DONE" : "PENDING")) === "DONE" ? "Learned: " : "Reason: "}
+                      {task.doneNote || task.stuckNote}
+                    </p>
+                  )}
                 </div>
-                <button
-                  onClick={() => deleteTask(task._id)}
-                  className="opacity-0 group-hover:opacity-100 p-1 text-gray-600 hover:text-red-400 transition-all"
-                >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+                {(task.status ?? (task.completed ? "DONE" : "PENDING")) === "PENDING" && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => finalizeTask(task._id, "DONE")}
+                      className="px-2 py-1 text-xs rounded-md bg-green-600/30 text-green-300 hover:bg-green-600/40"
+                    >
+                      Done
+                    </button>
+                    <button
+                      onClick={() => finalizeTask(task._id, "STUCK")}
+                      className="px-2 py-1 text-xs rounded-md bg-red-600/30 text-red-300 hover:bg-red-600/40"
+                    >
+                      Stuck
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>

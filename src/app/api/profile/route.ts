@@ -6,7 +6,8 @@ import { User } from "@/models/User";
 import { Task } from "@/models/Task";
 
 const updateSchema = z.object({
-  username: z.string().min(2).max(50),
+  username: z.string().min(2).max(50).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export async function GET() {
@@ -18,6 +19,7 @@ export async function GET() {
     _id: { toString(): string };
     username: string;
     email: string;
+    isPublic: boolean;
     currentStreak: number;
     bestStreak: number;
     totalTasksCompleted: number;
@@ -36,6 +38,7 @@ export async function GET() {
       id: user._id.toString(),
       username: user.username,
       email: user.email,
+      isPublic: user.isPublic ?? true,
       currentStreak: user.currentStreak,
       bestStreak: user.bestStreak,
       totalTasksCompleted: user.totalTasksCompleted,
@@ -53,12 +56,19 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const parsed = updateSchema.safeParse(body);
-  if (!parsed.success) return NextResponse.json({ error: "Invalid username" }, { status: 400 });
+  if (!parsed.success) return NextResponse.json({ error: "Invalid profile update" }, { status: 400 });
+  if (!parsed.data.username && parsed.data.isPublic === undefined) {
+    return NextResponse.json({ error: "No fields to update." }, { status: 400 });
+  }
+
+  const updateData: { username?: string; isPublic?: boolean } = {};
+  if (parsed.data.username) updateData.username = parsed.data.username.trim();
+  if (parsed.data.isPublic !== undefined) updateData.isPublic = parsed.data.isPublic;
 
   await connectDB();
   const user = await User.findByIdAndUpdate(
     session.user.id,
-    { username: parsed.data.username.trim() },
+    updateData,
     { new: true }
   ).lean();
 

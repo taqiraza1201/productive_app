@@ -4,6 +4,10 @@ export interface ITask extends Document {
   title: string;
   description: string;
   completed: boolean;
+  status: "PENDING" | "DONE" | "STUCK";
+  doneNote: string;
+  stuckNote: string;
+  statusUpdatedAt: Date | null;
   userId: Types.ObjectId;
   taskDate: string; // YYYY-MM-DD
   createdAt: Date;
@@ -15,6 +19,10 @@ const TaskSchema = new Schema<ITask>(
     title: { type: String, required: true, trim: true, maxlength: 200 },
     description: { type: String, default: "", trim: true, maxlength: 2000 },
     completed: { type: Boolean, default: false },
+    status: { type: String, enum: ["PENDING", "DONE", "STUCK"], default: "PENDING" },
+    doneNote: { type: String, default: "", trim: true, maxlength: 2000 },
+    stuckNote: { type: String, default: "", trim: true, maxlength: 2000 },
+    statusUpdatedAt: { type: Date, default: null },
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     taskDate: { type: String, required: true }, // YYYY-MM-DD
   },

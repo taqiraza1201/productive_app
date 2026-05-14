@@ -8,11 +8,10 @@ interface GlobalMongoose {
 }
 
 declare global {
-  // eslint-disable-next-line no-var
-  var _mongoose: GlobalMongoose | undefined;
+  let _mongoose: GlobalMongoose | undefined;
 }
 
-let cached = global._mongoose ?? { conn: null, promise: null };
+const cached = global._mongoose ?? { conn: null, promise: null };
 if (!global._mongoose) {
   global._mongoose = cached;
 }

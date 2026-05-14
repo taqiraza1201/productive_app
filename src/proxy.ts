@@ -10,7 +10,9 @@ export default auth(function middleware(req) {
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/tasks") ||
     pathname.startsWith("/analytics") ||
-    pathname.startsWith("/profile");
+    pathname.startsWith("/profile") ||
+    pathname.startsWith("/activity") ||
+    pathname.startsWith("/admin");
 
   if (isProtected && !isLoggedIn) {
     return NextResponse.redirect(new URL("/login", req.url));
