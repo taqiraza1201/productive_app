@@ -1,19 +1,23 @@
 import mongoose from "mongoose";
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost:27017/cybersec_tracker";
+const MONGODB_URI =
+  process.env.MONGODB_URI || "mongodb://localhost:27017/cybersec_tracker";
 
 interface GlobalMongoose {
   conn: typeof mongoose | null;
   promise: Promise<typeof mongoose> | null;
 }
 
+// Extend NodeJS.Global type-safe cache for mongoose connection across hot reloads.
+// eslint-disable-next-line no-var
 declare global {
-  let _mongoose: GlobalMongoose | undefined;
+  // eslint-disable-next-line no-var
+  var _mongoose: GlobalMongoose | undefined;
 }
 
-const cached = global._mongoose ?? { conn: null, promise: null };
-if (!global._mongoose) {
-  global._mongoose = cached;
+const cached = globalThis._mongoose ?? { conn: null, promise: null };
+if (!globalThis._mongoose) {
+  globalThis._mongoose = cached;
 }
 
 export async function connectDB(): Promise<typeof mongoose> {
