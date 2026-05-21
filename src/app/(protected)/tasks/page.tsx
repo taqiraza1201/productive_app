@@ -21,7 +21,7 @@ interface Task {
 
 function isTaskWindowOpen(): boolean {
   const hour = new Date().getHours();
-  return hour >= 22 && hour <= 23;
+  return hour >= 22 || hour === 0;
 }
 
 const stuckReasons = [
