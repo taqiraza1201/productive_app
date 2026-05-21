@@ -5,7 +5,8 @@ import { connectDB } from "@/lib/mongodb";
 import { Task } from "@/models/Task";
 import { User } from "@/models/User";
 import { isTaskCreationAllowed, getTaskWindowMessage } from "@/lib/taskWindow";
-import { calculateStreak, getTodayDateStr } from "@/lib/streak";
+import { getTodayDateStr } from "@/lib/streak";
+import { getDailyCheckInStatus } from "@/lib/discipline";
 
 const createTaskSchema = z.object({
   title: z.string().min(1).max(200),
@@ -22,6 +23,10 @@ export async function GET(req: NextRequest) {
   await connectDB();
   const currentUser = await User.findById(session.user.id).select("isDisabled").lean<{ isDisabled: boolean } | null>();
   if (currentUser?.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
+  const checkInStatus = await getDailyCheckInStatus(session.user.id);
+  if (!checkInStatus.hasCheckIn) {
+    return NextResponse.json({ error: "Daily check-in required before accessing tasks.", lockTo: "/check-in" }, { status: 423 });
+  }
   const tasks = await Task.find({ userId: session.user.id, taskDate: date }).sort({ createdAt: -1 }).lean();
   return NextResponse.json({ tasks });
 }
@@ -46,6 +51,10 @@ export async function POST(req: NextRequest) {
   await connectDB();
   const currentUser = await User.findById(session.user.id).select("isDisabled").lean<{ isDisabled: boolean } | null>();
   if (currentUser?.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
+  const checkInStatus = await getDailyCheckInStatus(session.user.id);
+  if (!checkInStatus.hasCheckIn) {
+    return NextResponse.json({ error: "Daily check-in required before creating tasks.", lockTo: "/check-in" }, { status: 423 });
+  }
 
   const task = await Task.create({
     title,
@@ -55,23 +64,13 @@ export async function POST(req: NextRequest) {
     status: "PENDING",
     doneNote: "",
     stuckNote: "",
+    doneWhatLearned: "",
+    doneWhatCompleted: "",
+    doneEvidenceType: "notes",
+    doneEvidenceText: "",
+    stuckReason: "",
+    stuckExplanation: "",
   });
-
-  // Update streak
-  const user = await User.findById(session.user.id);
-  if (user) {
-    const updated = calculateStreak({
-      currentStreak: user.currentStreak,
-      bestStreak: user.bestStreak,
-      totalActiveDays: user.totalActiveDays,
-      lastActiveDate: user.lastActiveDate,
-      todayStr,
-    });
-    await User.findByIdAndUpdate(session.user.id, {
-      ...updated,
-      lastActiveDate: new Date(),
-    });
-  }
 
   return NextResponse.json({ task }, { status: 201 });
 }

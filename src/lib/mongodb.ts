@@ -8,10 +8,7 @@ interface GlobalMongoose {
   promise: Promise<typeof mongoose> | null;
 }
 
-// Extend NodeJS.Global type-safe cache for mongoose connection across hot reloads.
-// eslint-disable-next-line no-var
 declare global {
-  // eslint-disable-next-line no-var
   var _mongoose: GlobalMongoose | undefined;
 }
 

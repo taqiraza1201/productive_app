@@ -3,7 +3,8 @@ import { auth } from "@/lib/auth";
 import { connectDB } from "@/lib/mongodb";
 import { User } from "@/models/User";
 import { Task } from "@/models/Task";
-import { getTodayDateStr } from "@/lib/streak";
+import { CheckIn } from "@/models/CheckIn";
+import { getDateStr, getDailyCheckInStatus, getDisciplineMetrics, getSundayReviewStatus, PRESSURE_MESSAGES } from "@/lib/discipline";
 
 export async function GET() {
   const session = await auth();
@@ -27,35 +28,21 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (user.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
 
-  const totalUsers = await User.countDocuments({ isDisabled: { $ne: true } });
-  const rank = await User.countDocuments({
-    isDisabled: { $ne: true },
-    $or: [
-      { currentStreak: { $gt: user.currentStreak } },
-      {
-        currentStreak: user.currentStreak,
-        totalTasksCompleted: { $gt: user.totalTasksCompleted },
-      },
-    ],
-  });
-
-  const todayStr = getTodayDateStr();
+  const todayStr = getDateStr();
   const todayTasks = await Task.find({ userId: session.user.id, taskDate: todayStr }).lean();
-  const totalTasks = await Task.countDocuments({ userId: session.user.id });
-  const completedTasks = await Task.countDocuments({
-    userId: session.user.id,
-    $or: [{ status: "DONE" }, { status: { $exists: false }, completed: true }],
-  });
-  const stuckTasks = await Task.countDocuments({ userId: session.user.id, status: "STUCK" });
-  const completionPct = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  const [disciplineMetrics, checkInStatus, reviewStatus, stuckReasonAggregation, todayCheckIn] = await Promise.all([
+    getDisciplineMetrics(session.user.id),
+    getDailyCheckInStatus(session.user.id),
+    getSundayReviewStatus(session.user.id),
+    Task.aggregate<{ _id: string; count: number }>([
+      { $match: { userId: user._id, status: "STUCK" } },
+      { $group: { _id: "$stuckReason", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+    ]),
+    CheckIn.findOne({ userId: session.user.id, date: todayStr }).lean(),
+  ]);
 
-  // Last 7 days activity
-  const sevenDaysAgo = new Date();
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
-  const recentTasks = await Task.find({
-    userId: session.user.id,
-    createdAt: { $gte: sevenDaysAgo },
-  }).lean();
+  const pressureMessage = PRESSURE_MESSAGES[Math.floor(Math.random() * PRESSURE_MESSAGES.length)];
 
   return NextResponse.json({
     user: {
@@ -69,11 +56,20 @@ export async function GET() {
       lastActiveDate: user.lastActiveDate,
       createdAt: user.createdAt,
     },
-    ranking: { rank: rank + 1, total: totalUsers },
     todayTasks,
-    completionPercentage: completionPct,
-    completedTasks,
-    stuckTasks,
-    recentTasks,
+    completedTasks: disciplineMetrics.completedTasks,
+    stuckTasks: disciplineMetrics.stuckTasks,
+    stuckRatio: disciplineMetrics.stuckRatio,
+    totalStudyHours: disciplineMetrics.totalStudyHours,
+    weeklyConsistencyPercent: disciplineMetrics.weeklyConsistencyPercent,
+    missedDaysThisMonth: disciplineMetrics.missedDaysThisMonth,
+    lastSkippedDay: disciplineMetrics.lastSkippedDay,
+    estimatedLostStudyHours: disciplineMetrics.estimatedLostStudyHours,
+    stuckReasonFrequency: stuckReasonAggregation,
+    pressureMessage,
+    checkInStatus,
+    reviewStatus,
+    todayCheckIn,
+    locked: !checkInStatus.hasCheckIn,
   });
 }
