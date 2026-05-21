@@ -58,7 +58,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     task.doneWhatCompleted = whatCompleted;
     task.doneEvidenceType = evidenceType;
     task.doneEvidenceText = evidenceText;
-    task.doneNote = `${whatLearned}\n${whatCompleted}\n${evidenceText}`;
+    task.doneNote = "";
     task.stuckNote = "";
     task.stuckReason = "";
     task.stuckExplanation = "";
@@ -72,7 +72,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     task.completed = false;
     task.stuckReason = reason;
     task.stuckExplanation = explanation;
-    task.stuckNote = explanation;
+    task.stuckNote = "";
     task.doneNote = "";
     task.doneWhatLearned = "";
     task.doneWhatCompleted = "";

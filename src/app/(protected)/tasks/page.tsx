@@ -58,12 +58,12 @@ export default function TasksPage() {
   const fetchTasks = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks?date=${selectedDate}`);
-      const data = await res.json();
       if (res.status === 423) {
         setLocked(true);
         setTasks([]);
         return;
       }
+      const data = await res.json();
       if (res.ok) {
         setLocked(false);
         setTasks(data.tasks ?? []);
@@ -168,6 +168,11 @@ export default function TasksPage() {
     } catch {
       setError("An error occurred.");
     }
+  }
+
+  function closeFinalizePanel() {
+    setActiveTask(null);
+    setActiveStatus(null);
   }
 
   const completedCount = tasks.filter((t) => (t.status ?? (t.completed ? "DONE" : "PENDING")) === "DONE").length;
@@ -305,31 +310,37 @@ export default function TasksPage() {
           </h3>
           {activeStatus === "DONE" ? (
             <>
-              <textarea value={whatLearned} onChange={(e) => setWhatLearned(e.target.value)} rows={2} placeholder="What was learned" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-              <textarea value={whatCompleted} onChange={(e) => setWhatCompleted(e.target.value)} rows={2} placeholder="What was completed" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-              <select value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as "notes" | "commands" | "code_snippet" | "writeup")} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
+              <label htmlFor="whatLearned" className="sr-only">What was learned</label>
+              <textarea id="whatLearned" value={whatLearned} onChange={(e) => setWhatLearned(e.target.value)} rows={2} placeholder="What was learned" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="whatCompleted" className="sr-only">What was completed</label>
+              <textarea id="whatCompleted" value={whatCompleted} onChange={(e) => setWhatCompleted(e.target.value)} rows={2} placeholder="What was completed" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="evidenceType" className="sr-only">Evidence type</label>
+              <select id="evidenceType" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as "notes" | "commands" | "code_snippet" | "writeup")} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
                 <option value="notes">notes</option>
                 <option value="commands">commands</option>
                 <option value="code_snippet">code snippet</option>
                 <option value="writeup">writeup text</option>
               </select>
-              <textarea value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} rows={4} placeholder="Evidence text" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="evidenceText" className="sr-only">Evidence text</label>
+              <textarea id="evidenceText" value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} rows={4} placeholder="Evidence text" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
             </>
           ) : (
             <>
-              <select value={stuckReason} onChange={(e) => setStuckReason(e.target.value as typeof stuckReasons[number])} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
+              <label htmlFor="stuckReason" className="sr-only">STUCK reason</label>
+              <select id="stuckReason" value={stuckReason} onChange={(e) => setStuckReason(e.target.value as typeof stuckReasons[number])} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
                 {stuckReasons.map((reason) => (
                   <option key={reason} value={reason}>{reason}</option>
                 ))}
               </select>
-              <textarea value={stuckExplanation} onChange={(e) => setStuckExplanation(e.target.value)} rows={4} placeholder="Custom explanation" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="stuckExplanation" className="sr-only">Custom explanation</label>
+              <textarea id="stuckExplanation" value={stuckExplanation} onChange={(e) => setStuckExplanation(e.target.value)} rows={4} placeholder="Custom explanation" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
             </>
           )}
           <div className="flex gap-2">
             <button onClick={() => void submitFinalize()} className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white text-sm">
               Submit
             </button>
-            <button onClick={() => { setActiveTask(null); setActiveStatus(null); }} className="px-4 py-2 rounded bg-gray-700 text-gray-200 text-sm">
+            <button onClick={closeFinalizePanel} className="px-4 py-2 rounded bg-gray-700 text-gray-200 text-sm">
               Cancel
             </button>
           </div>

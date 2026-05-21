@@ -90,16 +90,19 @@ export default function CheckInPage() {
 
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <label className="text-sm text-gray-300">Study time (minutes)</label>
-            <input type="number" min={0} max={1440} value={studyMinutes} onChange={(e) => setStudyMinutes(Number(e.target.value))} className="mt-1 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+            <label htmlFor="studyMinutes" className="text-sm text-gray-300">Study time (minutes)</label>
+            <input id="studyMinutes" type="number" min={0} max={1440} step={1} value={studyMinutes} onChange={(e) => setStudyMinutes(Number(e.target.value))} className="mt-1 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
           </div>
-          <textarea value={studied} onChange={(e) => setStudied(e.target.value)} rows={3} placeholder="What was studied?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={biggestConfusion} onChange={(e) => setBiggestConfusion(e.target.value)} rows={3} placeholder="Biggest confusion?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={tomorrowTarget} onChange={(e) => setTomorrowTarget(e.target.value)} rows={3} placeholder="Tomorrow target?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="studied" className="sr-only">What was studied?</label>
+          <textarea id="studied" value={studied} onChange={(e) => setStudied(e.target.value)} rows={3} placeholder="What was studied?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="biggestConfusion" className="sr-only">Biggest confusion?</label>
+          <textarea id="biggestConfusion" value={biggestConfusion} onChange={(e) => setBiggestConfusion(e.target.value)} rows={3} placeholder="Biggest confusion?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="tomorrowTarget" className="sr-only">Tomorrow target?</label>
+          <textarea id="tomorrowTarget" value={tomorrowTarget} onChange={(e) => setTomorrowTarget(e.target.value)} rows={3} placeholder="Tomorrow target?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
 
           <div>
-            <label className="text-sm text-gray-300">No-zero-day recovery task</label>
-            <select value={recoveryTask} onChange={(e) => setRecoveryTask(e.target.value as RecoveryTask)} className="mt-1 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
+            <label htmlFor="recoveryTask" className="text-sm text-gray-300">No-zero-day recovery task</label>
+            <select id="recoveryTask" value={recoveryTask} onChange={(e) => setRecoveryTask(e.target.value as RecoveryTask)} className="mt-1 w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
               <option value="revise_notes">revise notes</option>
               <option value="linux_command_practice">1 Linux command practice</option>
               <option value="packet_analysis">1 packet analysis</option>

@@ -29,6 +29,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const today = getDateStr();
 
   const body = await req.json().catch(() => ({}));
   const parsed = checkInSchema.safeParse(body);
@@ -42,7 +43,6 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
   if (user.isDisabled) return NextResponse.json({ error: "Account is disabled." }, { status: 403 });
 
-  const today = getDateStr();
   const doneToday = await Task.countDocuments({ userId: session.user.id, taskDate: today, status: "DONE" });
   const needsRecovery = doneToday === 0;
   if (needsRecovery && !parsed.data.recoveryTask) {

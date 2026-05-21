@@ -35,7 +35,7 @@ export async function GET() {
         type: "DONE",
         createdAt: task.statusUpdatedAt || task.updatedAt || task.createdAt,
         title: task.title,
-        detail: `Learned: ${task.doneWhatLearned || task.doneNote}\nCompleted: ${task.doneWhatCompleted}\nEvidence (${task.doneEvidenceType}): ${task.doneEvidenceText}`,
+        detail: `Learned: ${task.doneWhatLearned ?? ""}\nCompleted: ${task.doneWhatCompleted ?? ""}\nEvidence (${task.doneEvidenceType ?? "notes"}): ${task.doneEvidenceText ?? ""}`,
       };
     }
     return {
@@ -43,7 +43,7 @@ export async function GET() {
       type: "STUCK",
       createdAt: task.statusUpdatedAt || task.updatedAt || task.createdAt,
       title: task.title,
-      detail: `Reason: ${task.stuckReason || "other"}\nExplanation: ${task.stuckExplanation || task.stuckNote}`,
+      detail: `Reason: ${task.stuckReason || "other"}\nExplanation: ${task.stuckExplanation || task.stuckNote || ""}`,
     };
   });
 

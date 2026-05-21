@@ -9,6 +9,8 @@ export const PRESSURE_MESSAGES = [
   "Consistency beats motivation.",
   "You are either compounding skills or wasting time.",
 ];
+// Conservative baseline used for regret estimation when actual missed-day study targets are unknown.
+const ASSUMED_DAILY_STUDY_HOURS = 3;
 
 export function getDateStr(date = new Date()): string {
   return format(date, "yyyy-MM-dd");
@@ -60,10 +62,16 @@ export async function getDisciplineMetrics(userId: string) {
   const monthlyCheckInCount = checkIns.filter((c) => c.date >= monthStartStr).length;
   const missedDaysThisMonth = Math.max(daysElapsedThisMonth - monthlyCheckInCount, 0);
 
-  const lastSkippedDay = Array.from({ length: 120 }, (_, i) => getDateStr(subDays(new Date(), i)))
-    .find((date) => !checkInDates.has(date)) ?? null;
+  let lastSkippedDay: string | null = null;
+  for (let i = 0; i < 120; i += 1) {
+    const date = getDateStr(subDays(new Date(), i));
+    if (!checkInDates.has(date)) {
+      lastSkippedDay = date;
+      break;
+    }
+  }
 
-  const estimatedLostStudyHours = missedDaysThisMonth * 3;
+  const estimatedLostStudyHours = missedDaysThisMonth * ASSUMED_DAILY_STUDY_HOURS;
 
   return {
     completedTasks,

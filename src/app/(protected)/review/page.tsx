@@ -94,11 +94,16 @@ export default function ReviewPage() {
         <form onSubmit={submitReview} className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-3">
           {error && <p className="text-red-300 text-sm">{error}</p>}
           {message && <p className="text-green-400 text-sm">{message}</p>}
-          <textarea value={improved} onChange={(e) => setImproved(e.target.value)} rows={2} placeholder="What improved this week?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={biggestConfusion} onChange={(e) => setBiggestConfusion(e.target.value)} rows={2} placeholder="Biggest confusion?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={biggestDistraction} onChange={(e) => setBiggestDistraction(e.target.value)} rows={2} placeholder="Biggest distraction?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={wastedMostTime} onChange={(e) => setWastedMostTime(e.target.value)} rows={2} placeholder="What wasted the most time?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
-          <textarea value={nextWeekTarget} onChange={(e) => setNextWeekTarget(e.target.value)} rows={2} placeholder="Main target next week?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="improved" className="sr-only">What improved this week?</label>
+          <textarea id="improved" value={improved} onChange={(e) => setImproved(e.target.value)} rows={2} placeholder="What improved this week?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="reviewBiggestConfusion" className="sr-only">Biggest confusion?</label>
+          <textarea id="reviewBiggestConfusion" value={biggestConfusion} onChange={(e) => setBiggestConfusion(e.target.value)} rows={2} placeholder="Biggest confusion?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="biggestDistraction" className="sr-only">Biggest distraction?</label>
+          <textarea id="biggestDistraction" value={biggestDistraction} onChange={(e) => setBiggestDistraction(e.target.value)} rows={2} placeholder="Biggest distraction?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="wastedMostTime" className="sr-only">What wasted the most time?</label>
+          <textarea id="wastedMostTime" value={wastedMostTime} onChange={(e) => setWastedMostTime(e.target.value)} rows={2} placeholder="What wasted the most time?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+          <label htmlFor="nextWeekTarget" className="sr-only">Main target next week?</label>
+          <textarea id="nextWeekTarget" value={nextWeekTarget} onChange={(e) => setNextWeekTarget(e.target.value)} rows={2} placeholder="Main target next week?" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
           <button type="submit" className="px-4 py-2 bg-cyan-700 hover:bg-cyan-600 rounded text-white text-sm">
             Submit weekly review
           </button>

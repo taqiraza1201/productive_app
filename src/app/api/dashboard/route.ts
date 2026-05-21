@@ -38,6 +38,7 @@ export async function GET() {
       { $match: { userId: user._id, status: "STUCK" } },
       { $group: { _id: "$stuckReason", count: { $sum: 1 } } },
       { $sort: { count: -1 } },
+      { $limit: 10 },
     ]),
     CheckIn.findOne({ userId: session.user.id, date: todayStr }).lean(),
   ]);
