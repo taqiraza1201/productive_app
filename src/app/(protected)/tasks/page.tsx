@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { format } from "date-fns";
+import CheckInLock from "@/components/CheckInLock";
 
 interface Task {
   _id: string;
@@ -9,16 +10,30 @@ interface Task {
   description: string;
   completed: boolean;
   status?: "PENDING" | "DONE" | "STUCK";
-  doneNote?: string;
-  stuckNote?: string;
+  doneWhatLearned?: string;
+  doneWhatCompleted?: string;
+  doneEvidenceType?: "notes" | "commands" | "code_snippet" | "writeup";
+  doneEvidenceText?: string;
+  stuckReason?: string;
+  stuckExplanation?: string;
   taskDate: string;
-  createdAt: string;
 }
 
 function isTaskWindowOpen(): boolean {
   const hour = new Date().getHours();
   return hour >= 22 || hour === 0;
 }
+
+const stuckReasons = [
+  "procrastination",
+  "distraction",
+  "confusion",
+  "burnout",
+  "fear_of_difficulty",
+  "poor_planning",
+  "tiredness",
+  "other",
+] as const;
 
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -30,16 +45,31 @@ export default function TasksPage() {
   const [description, setDescription] = useState("");
   const [selectedDate, setSelectedDate] = useState(format(new Date(), "yyyy-MM-dd"));
   const [windowOpen, setWindowOpen] = useState(isTaskWindowOpen());
+  const [locked, setLocked] = useState(false);
+  const [activeTask, setActiveTask] = useState<Task | null>(null);
+  const [activeStatus, setActiveStatus] = useState<"DONE" | "STUCK" | null>(null);
+  const [whatLearned, setWhatLearned] = useState("");
+  const [whatCompleted, setWhatCompleted] = useState("");
+  const [evidenceType, setEvidenceType] = useState<"notes" | "commands" | "code_snippet" | "writeup">("notes");
+  const [evidenceText, setEvidenceText] = useState("");
+  const [stuckReason, setStuckReason] = useState<typeof stuckReasons[number]>("procrastination");
+  const [stuckExplanation, setStuckExplanation] = useState("");
 
   const fetchTasks = useCallback(async () => {
     try {
       const res = await fetch(`/api/tasks?date=${selectedDate}`);
+      if (res.status === 423) {
+        setLocked(true);
+        setTasks([]);
+        return;
+      }
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
+        setLocked(false);
         setTasks(data.tasks ?? []);
       }
     } catch {
-      // ignore
+      setError("Failed to load tasks.");
     } finally {
       setLoading(false);
     }
@@ -60,7 +90,7 @@ export default function TasksPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
-    if (!window.confirm("Are you sure? You cannot delete this task after creating it.")) return;
+    if (!window.confirm("Are you sure?\n\nTasks cannot be deleted.")) return;
     setError("");
     setSuccess("");
     setCreating(true);
@@ -74,13 +104,14 @@ export default function TasksPage() {
       const data = await res.json();
       if (!res.ok) {
         setError(data.error ?? "Failed to create task.");
+        if (res.status === 423) setLocked(true);
         return;
       }
       setTitle("");
       setDescription("");
-      setSuccess("Task created!");
+      setSuccess("Task created.");
       await fetchTasks();
-      setTimeout(() => setSuccess(""), 3000);
+      setTimeout(() => setSuccess(""), 2500);
     } catch {
       setError("An error occurred.");
     } finally {
@@ -88,44 +119,74 @@ export default function TasksPage() {
     }
   }
 
-  async function finalizeTask(id: string, status: "DONE" | "STUCK") {
-    const notePrompt = status === "DONE"
-      ? "What did you learn from this task?"
-      : "Why are you stuck on this task?";
-    const note = window.prompt(notePrompt, "");
-    if (!note || note.trim().length < 5) {
-      setError(status === "DONE" ? "DONE requires a learning note (min 5 chars)." : "STUCK requires a reason (min 5 chars).");
-      return;
-    }
+  function startFinalize(task: Task, status: "DONE" | "STUCK") {
+    setError("");
+    setActiveTask(task);
+    setActiveStatus(status);
+    setWhatLearned("");
+    setWhatCompleted("");
+    setEvidenceType("notes");
+    setEvidenceText("");
+    setStuckReason("procrastination");
+    setStuckExplanation("");
+  }
+
+  async function submitFinalize() {
+    if (!activeTask || !activeStatus) return;
+    setError("");
+
+    const body =
+      activeStatus === "DONE"
+        ? {
+            status: "DONE",
+            whatLearned: whatLearned.trim(),
+            whatCompleted: whatCompleted.trim(),
+            evidenceType,
+            evidenceText: evidenceText.trim(),
+          }
+        : {
+            status: "STUCK",
+            reason: stuckReason,
+            explanation: stuckExplanation.trim(),
+          };
 
     try {
-      const res = await fetch(`/api/tasks/${id}`, {
+      const res = await fetch(`/api/tasks/${activeTask._id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status, note: note.trim() }),
+        body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (res.ok) {
-        setTasks((prev) => prev.map((t) => t._id === id ? data.task : t));
-      } else {
+      if (!res.ok) {
         setError(data.error ?? "Failed to update task.");
+        if (res.status === 423) setLocked(true);
+        return;
       }
+      setTasks((prev) => prev.map((t) => (t._id === activeTask._id ? data.task : t)));
+      setActiveTask(null);
+      setActiveStatus(null);
     } catch {
       setError("An error occurred.");
     }
   }
 
+  function closeFinalizePanel() {
+    setActiveTask(null);
+    setActiveStatus(null);
+  }
+
   const completedCount = tasks.filter((t) => (t.status ?? (t.completed ? "DONE" : "PENDING")) === "DONE").length;
   const stuckCount = tasks.filter((t) => (t.status ?? (t.completed ? "DONE" : "PENDING")) === "STUCK").length;
 
+  if (locked) return <CheckInLock />;
+
   return (
-    <div className="space-y-6 max-w-2xl mx-auto">
+    <div className="space-y-6 max-w-3xl mx-auto">
       <div>
-        <h1 className="text-2xl font-bold text-white">Daily Tasks</h1>
-        <p className="text-gray-400 mt-1">Track your cybersecurity challenges.</p>
+        <h1 className="text-2xl font-bold text-white">Tasks</h1>
+        <p className="text-gray-400 mt-1">Execution list. Only DONE or STUCK. No deletes.</p>
       </div>
 
-      {/* Date picker */}
       <div className="flex items-center gap-3">
         <label className="text-sm text-gray-400">Date:</label>
         <input
@@ -133,11 +194,10 @@ export default function TasksPage() {
           value={selectedDate}
           onChange={(e) => setSelectedDate(e.target.value)}
           max={format(new Date(), "yyyy-MM-dd")}
-          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm focus:outline-none focus:border-cyan-500"
+          className="px-3 py-1.5 bg-gray-800 border border-gray-700 rounded-lg text-gray-200 text-sm"
         />
       </div>
 
-      {/* Create task form */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-semibold text-white">Create Task</h2>
@@ -145,112 +205,147 @@ export default function TasksPage() {
             {windowOpen ? "Window Open (10 PM - 12 AM)" : "Window Closed"}
           </span>
         </div>
-
         {!windowOpen && (
-          <div className="mb-4 p-3 bg-yellow-500/10 border border-yellow-500/30 rounded-lg text-yellow-400 text-sm">
-            ⏰ Task creation is only allowed between 10:00 PM and 12:00 AM.
+          <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-sm">
+            Task creation is only allowed between 10:00 PM and 12:00 AM.
           </div>
         )}
-
-        {error && (
-          <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">{error}</div>
-        )}
-        {success && (
-          <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>
-        )}
+        {error && <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-300 text-sm">{error}</div>}
+        {success && <div className="mb-4 p-3 bg-green-500/10 border border-green-500/30 rounded-lg text-green-400 text-sm">{success}</div>}
 
         <form onSubmit={handleCreate} className="space-y-3">
           <input
             type="text"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task title..."
+            placeholder="Task title"
             disabled={!windowOpen || creating}
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 disabled:opacity-50"
+            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 disabled:opacity-50"
           />
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Description (optional)..."
+            placeholder="Description (optional)"
             disabled={!windowOpen || creating}
             rows={2}
-            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-cyan-500 resize-none disabled:opacity-50"
+            className="w-full px-4 py-2.5 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 resize-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={!windowOpen || creating || !title.trim()}
-            className="w-full py-2.5 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-colors"
+            className="w-full py-2.5 bg-cyan-700 hover:bg-cyan-600 disabled:opacity-50 text-white rounded-lg transition-colors"
           >
             {creating ? "Creating..." : "Add Task"}
           </button>
         </form>
       </div>
 
-      {/* Task list */}
       <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-semibold text-white">
-            {selectedDate === format(new Date(), "yyyy-MM-dd") ? "Today's Tasks" : `Tasks for ${selectedDate}`}
-          </h2>
-          {tasks.length > 0 && (
-            <span className="text-xs text-gray-400">{completedCount} done • {stuckCount} stuck • {tasks.length} total</span>
-          )}
+          <h2 className="font-semibold text-white">Task List</h2>
+          {tasks.length > 0 && <span className="text-xs text-gray-400">{completedCount} done • {stuckCount} stuck • {tasks.length} total</span>}
         </div>
 
         {loading ? (
-          <div className="flex justify-center py-8">
-            <div className="animate-spin w-6 h-6 border-2 border-cyan-500 border-t-transparent rounded-full" />
-          </div>
+          <p className="text-gray-400">Loading...</p>
         ) : tasks.length === 0 ? (
           <p className="text-gray-500 text-sm text-center py-8">No tasks for this date.</p>
         ) : (
           <ul className="space-y-3">
-            {tasks.map((task) => (
-              <li key={task._id} className="flex items-start gap-3 p-3 bg-gray-800 rounded-lg group">
-                <div className="flex-1 min-w-0">
-                  {(() => {
-                    const status = task.status ?? (task.completed ? "DONE" : "PENDING");
-                    const statusClass = status === "DONE" ? "text-green-400 bg-green-500/20 border border-green-500/30" : status === "STUCK" ? "text-red-300 bg-red-500/20 border border-red-500/30" : "text-gray-300 bg-gray-700 border border-gray-600";
-                    return (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full mb-1 inline-block ${statusClass}`}>
-                        {status}
-                      </span>
-                    );
-                  })()}
-                  <p className={`text-sm font-medium ${(task.status ?? (task.completed ? "DONE" : "PENDING")) !== "PENDING" ? "text-gray-300" : "text-white"}`}>
-                    {task.title}
-                  </p>
-                  {task.description && (
-                    <p className="text-xs text-gray-500 mt-0.5">{task.description}</p>
-                  )}
-                  {(task.doneNote || task.stuckNote) && (
-                    <p className="text-xs text-cyan-300 mt-1">
-                      {(task.status ?? (task.completed ? "DONE" : "PENDING")) === "DONE" ? "Learned: " : "Reason: "}
-                      {task.doneNote || task.stuckNote}
-                    </p>
-                  )}
-                </div>
-                {(task.status ?? (task.completed ? "DONE" : "PENDING")) === "PENDING" && (
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => finalizeTask(task._id, "DONE")}
-                      className="px-2 py-1 text-xs rounded-md bg-green-600/30 text-green-300 hover:bg-green-600/40"
+            {tasks.map((task) => {
+              const status = task.status ?? (task.completed ? "DONE" : "PENDING");
+              return (
+                <li key={task._id} className="flex items-start gap-3 p-3 bg-gray-800 rounded-lg">
+                  <div className="flex-1 min-w-0">
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full mb-1 inline-block ${
+                      status === "DONE"
+                        ? "text-green-400 bg-green-500/20 border border-green-500/30"
+                        : status === "STUCK"
+                        ? "text-red-300 bg-red-500/20 border border-red-500/30"
+                        : "text-gray-300 bg-gray-700 border border-gray-600"
+                    }`}
                     >
-                      Done
-                    </button>
-                    <button
-                      onClick={() => finalizeTask(task._id, "STUCK")}
-                      className="px-2 py-1 text-xs rounded-md bg-red-600/30 text-red-300 hover:bg-red-600/40"
-                    >
-                      Stuck
-                    </button>
+                      {status}
+                    </span>
+                    <p className={`text-sm font-medium ${status === "PENDING" ? "text-white" : "text-gray-300"}`}>{task.title}</p>
+                    {task.description && <p className="text-xs text-gray-500 mt-0.5">{task.description}</p>}
+                    {status === "DONE" && (
+                      <p className="text-xs text-cyan-300 mt-1">
+                        Learned: {task.doneWhatLearned} • Completed: {task.doneWhatCompleted}
+                      </p>
+                    )}
+                    {status === "STUCK" && (
+                      <p className="text-xs text-red-300 mt-1">
+                        {task.stuckReason}: {task.stuckExplanation}
+                      </p>
+                    )}
                   </div>
-                )}
-              </li>
-            ))}
+                  {status === "PENDING" && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startFinalize(task, "DONE")}
+                        className="px-2 py-1 text-xs rounded-md bg-green-600/30 text-green-300 hover:bg-green-600/40"
+                      >
+                        Done
+                      </button>
+                      <button
+                        onClick={() => startFinalize(task, "STUCK")}
+                        className="px-2 py-1 text-xs rounded-md bg-red-600/30 text-red-300 hover:bg-red-600/40"
+                      >
+                        Stuck
+                      </button>
+                    </div>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
+
+      {activeTask && activeStatus && (
+        <div className="bg-gray-900 border border-gray-700 rounded-xl p-5 space-y-3">
+          <h3 className="text-white font-semibold">
+            Finalize: {activeTask.title} ({activeStatus})
+          </h3>
+          {activeStatus === "DONE" ? (
+            <>
+              <label htmlFor="whatLearned" className="sr-only">What was learned</label>
+              <textarea id="whatLearned" value={whatLearned} onChange={(e) => setWhatLearned(e.target.value)} rows={2} placeholder="What was learned" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="whatCompleted" className="sr-only">What was completed</label>
+              <textarea id="whatCompleted" value={whatCompleted} onChange={(e) => setWhatCompleted(e.target.value)} rows={2} placeholder="What was completed" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+              <label htmlFor="evidenceType" className="sr-only">Evidence type</label>
+              <select id="evidenceType" value={evidenceType} onChange={(e) => setEvidenceType(e.target.value as "notes" | "commands" | "code_snippet" | "writeup")} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
+                <option value="notes">notes</option>
+                <option value="commands">commands</option>
+                <option value="code_snippet">code snippet</option>
+                <option value="writeup">writeup text</option>
+              </select>
+              <label htmlFor="evidenceText" className="sr-only">Evidence text</label>
+              <textarea id="evidenceText" value={evidenceText} onChange={(e) => setEvidenceText(e.target.value)} rows={4} placeholder="Evidence text" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+            </>
+          ) : (
+            <>
+              <label htmlFor="stuckReason" className="sr-only">STUCK reason</label>
+              <select id="stuckReason" value={stuckReason} onChange={(e) => setStuckReason(e.target.value as typeof stuckReasons[number])} className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm">
+                {stuckReasons.map((reason) => (
+                  <option key={reason} value={reason}>{reason}</option>
+                ))}
+              </select>
+              <label htmlFor="stuckExplanation" className="sr-only">Custom explanation</label>
+              <textarea id="stuckExplanation" value={stuckExplanation} onChange={(e) => setStuckExplanation(e.target.value)} rows={4} placeholder="Custom explanation" className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white text-sm" />
+            </>
+          )}
+          <div className="flex gap-2">
+            <button onClick={() => void submitFinalize()} className="px-4 py-2 rounded bg-cyan-700 hover:bg-cyan-600 text-white text-sm">
+              Submit
+            </button>
+            <button onClick={closeFinalizePanel} className="px-4 py-2 rounded bg-gray-700 text-gray-200 text-sm">
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

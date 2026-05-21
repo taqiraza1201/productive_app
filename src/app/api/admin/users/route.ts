@@ -8,7 +8,7 @@ import { Types } from "mongoose";
 
 const updateUserSchema = z.object({
   userId: z.string().min(1),
-  action: z.enum(["setPublic", "setDisabled", "resetStreak"]),
+  action: z.enum(["setDisabled", "resetStreak"]),
   value: z.boolean().optional(),
 });
 
@@ -30,7 +30,7 @@ export async function GET(req: NextRequest) {
   }
 
   const users = await User.find(filter)
-    .select("username email role isPublic isDisabled currentStreak bestStreak totalTasksCompleted totalActiveDays createdAt")
+    .select("username email role isDisabled currentStreak bestStreak totalTasksCompleted totalActiveDays createdAt")
     .sort({ createdAt: -1 })
     .limit(200)
     .lean<Array<{
@@ -38,7 +38,6 @@ export async function GET(req: NextRequest) {
       username: string;
       email: string;
       role?: "user" | "admin";
-      isPublic: boolean;
       isDisabled: boolean;
       currentStreak: number;
       bestStreak: number;
@@ -91,7 +90,6 @@ export async function GET(req: NextRequest) {
       username: user.username,
       email: user.email,
       role: user.role ?? "user",
-      isPublic: user.isPublic ?? true,
       isDisabled: user.isDisabled ?? false,
       currentStreak: user.currentStreak,
       bestStreak: user.bestStreak,
@@ -125,20 +123,6 @@ export async function PATCH(req: NextRequest) {
   }
 
   await connectDB();
-
-  if (action === "setPublic") {
-    if (typeof value !== "boolean") return NextResponse.json({ error: "value is required." }, { status: 400 });
-    const updated = await User.findByIdAndUpdate(userId, { isPublic: value }, { new: true }).select("_id").lean();
-    if (!updated) return NextResponse.json({ error: "User not found." }, { status: 404 });
-    await logAdminAction({
-      adminUserId: admin._id.toString(),
-      action: value ? "user_set_public" : "user_set_private",
-      targetType: "user",
-      targetId: userId,
-      details: { isPublic: value },
-    });
-    return NextResponse.json({ success: true });
-  }
 
   if (action === "setDisabled") {
     if (typeof value !== "boolean") return NextResponse.json({ error: "value is required." }, { status: 400 });

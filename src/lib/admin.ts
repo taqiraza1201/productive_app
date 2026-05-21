@@ -31,7 +31,6 @@ export async function bootstrapAdminFromEnv() {
     email: adminEmail,
     password: hashedPassword,
     role: "admin",
-    isPublic: false,
     isDisabled: false,
   });
 }

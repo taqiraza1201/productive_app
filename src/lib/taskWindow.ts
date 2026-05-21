@@ -1,6 +1,5 @@
 /**
- * Task creation is allowed between 22:00 (10 PM) and 00:59 (12:59 AM).
- * Returns true if current hour is in [22, 23, 0].
+ * Task creation is allowed between 22:00 (10 PM) and 00:59.
  */
 export function isTaskCreationAllowed(): boolean {
   const hour = new Date().getHours();

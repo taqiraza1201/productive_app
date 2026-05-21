@@ -30,6 +30,12 @@ export async function GET(req: NextRequest) {
       taskDate: string;
       status?: "PENDING" | "DONE" | "STUCK";
       completed: boolean;
+      doneWhatLearned?: string;
+      doneWhatCompleted?: string;
+      doneEvidenceType?: "notes" | "commands" | "code_snippet" | "writeup";
+      doneEvidenceText?: string;
+      stuckReason?: string;
+      stuckExplanation?: string;
       doneNote?: string;
       stuckNote?: string;
       userId: { toString(): string };
@@ -54,8 +60,14 @@ export async function GET(req: NextRequest) {
         description: task.description,
         taskDate: task.taskDate,
         status: statusValue,
-        doneNote: task.doneNote ?? "",
-        stuckNote: task.stuckNote ?? "",
+        doneNote:
+          task.doneWhatLearned || task.doneWhatCompleted || task.doneEvidenceText
+            ? `Learned: ${task.doneWhatLearned ?? ""}\nCompleted: ${task.doneWhatCompleted ?? ""}\nEvidence (${task.doneEvidenceType ?? "notes"}): ${task.doneEvidenceText ?? ""}`.trim()
+            : (task.doneNote ?? ""),
+        stuckNote:
+          task.stuckReason || task.stuckExplanation
+            ? `${task.stuckReason ?? "other"}: ${task.stuckExplanation ?? ""}`.trim()
+            : (task.stuckNote ?? ""),
         createdAt: task.createdAt,
         user: user
           ? { id: task.userId.toString(), username: user.username, email: user.email }

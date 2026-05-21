@@ -9,9 +9,11 @@ export default auth(function middleware(req) {
   const isProtected =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/tasks") ||
+    pathname.startsWith("/check-in") ||
+    pathname.startsWith("/review") ||
+    pathname.startsWith("/timeline") ||
     pathname.startsWith("/analytics") ||
     pathname.startsWith("/profile") ||
-    pathname.startsWith("/activity") ||
     pathname.startsWith("/admin");
 
   if (isProtected && !isLoggedIn) {
